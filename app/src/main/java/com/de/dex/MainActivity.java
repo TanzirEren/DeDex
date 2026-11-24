@@ -69,7 +69,9 @@ public class MainActivity extends Activity {
         Button build = findViewById(R.id.btnBuild);
         Button export = findViewById(R.id.btnExport);
         Button zip = findViewById(R.id.btnZip);
+        Button remote = findViewById(R.id.btnRemote);
         actionButtons = new Button[]{pick, out, scan, build, export, zip};
+        remote.setOnClickListener(v -> startActivity(new Intent(this, RemoteUnpackActivity.class)));
 
         pick.setOnClickListener(v -> {
             Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);

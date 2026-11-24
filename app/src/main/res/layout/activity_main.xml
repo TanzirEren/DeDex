@@ -28,6 +28,8 @@
             <Button android:id="@+id/btnZip" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginStart="5dp"
             android:background="@drawable/btn_ghost" android:text="Save ZIP" android:textAllCaps="false" android:textColor="@color/text" />
         </LinearLayout>
+        <Button android:id="@+id/btnRemote" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="10dp"
+            android:background="@drawable/btn_ghost" android:text="Remote Unpack (GitHub Actions)" android:textAllCaps="false" android:textColor="@color/text" />
         <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
             android:indeterminate="true" android:visibility="gone" />
