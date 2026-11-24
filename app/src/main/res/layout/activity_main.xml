@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/bg" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="20dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="DeDex" android:textColor="@color/text" android:textSize="28sp" android:textStyle="bold" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="16dp"
+            android:text="Unpack protected APKs, find hidden DEX" android:textColor="@color/muted" android:textSize="13sp" />
+        <Button android:id="@+id/btnPick" android:layout_width="match_parent" android:layout_height="56dp"
+            android:background="@drawable/btn_primary" android:text="Select protected APK" android:textAllCaps="false" android:textColor="@color/accent_dark" android:textStyle="bold" />
+        <TextView android:id="@+id/tvFile" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:background="@drawable/card" android:padding="14dp"
+            android:text="No APK selected" android:textColor="@color/text" android:textSize="14sp" />
+        <View android:layout_width="match_parent" android:layout_height="12dp" />
+        <Button android:id="@+id/btnOut" android:layout_width="match_parent" android:layout_height="52dp"
+            android:background="@drawable/btn_primary" android:text="Out: extract all DEX" android:textAllCaps="false" android:textColor="@color/accent_dark" android:textStyle="bold" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
+            <Button android:id="@+id/btnScan" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginEnd="5dp"
+            android:background="@drawable/btn_ghost" android:text="Security scan" android:textAllCaps="false" android:textColor="@color/text" />
+            <Button android:id="@+id/btnBuild" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginStart="5dp"
+            android:background="@drawable/btn_ghost" android:text="Build APK" android:textAllCaps="false" android:textColor="@color/text" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
+            <Button android:id="@+id/btnExport" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginEnd="5dp"
+            android:background="@drawable/btn_ghost" android:text="Export DEX" android:textAllCaps="false" android:textColor="@color/text" />
+            <Button android:id="@+id/btnZip" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginStart="5dp"
+            android:background="@drawable/btn_ghost" android:text="Save ZIP" android:textAllCaps="false" android:textColor="@color/text" />
+        </LinearLayout>
+        <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:indeterminate="true" android:visibility="gone" />
+        <TextView android:id="@+id/tvLog" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="14dp" android:background="@drawable/card" android:fontFamily="monospace"
+            android:padding="14dp" android:text="Ready." android:textColor="@color/muted"
+            android:textIsSelectable="true" android:textSize="12sp" />
+    </LinearLayout>
+</ScrollView>
