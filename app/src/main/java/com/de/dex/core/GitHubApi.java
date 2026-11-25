@@ -95,7 +95,9 @@ public final class GitHubApi {
                 + "/releases/" + relId + "/assets?name=" + urlEncode(name);
         HttpURLConnection u = open(uploadUrl, "POST");
         u.setDoOutput(true);
-        u.setChunkedStreamingMode(1 << 16);
+        // The release-asset endpoint needs a real Content-Length (not chunked
+        // transfer-encoding) so it can hand the upload off to blob storage.
+        u.setFixedLengthStreamingMode(file.length());
         u.setRequestProperty("Content-Type", "application/vnd.android.package-archive");
         try (OutputStream o = u.getOutputStream(); InputStream in = new FileInputStream(file)) {
             Util.copy(in, o);
