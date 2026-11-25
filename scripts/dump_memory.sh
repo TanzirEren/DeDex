@@ -23,19 +23,44 @@ if [ -z "$PKG" ]; then
 fi
 echo "== Package: $PKG"
 
+echo "== Clearing logcat so the next lines are only from this app's launch"
+adb logcat -c
+
 echo "== Launching"
-adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 -v > monkey_output.txt 2>&1
+cat monkey_output.txt
 
-echo "== Waiting ${SETTLE_SECONDS}s for the app to initialise (loader runs here)"
-sleep "$SETTLE_SECONDS"
+echo "== Polling for the process for up to ${SETTLE_SECONDS}s (loader runs here)"
+PID=""
+for i in $(seq 1 "$SETTLE_SECONDS"); do
+  PID="$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}')"
+  if [ -n "$PID" ]; then
+    echo "  seen at ${i}s: pid $PID"
+    break
+  fi
+  sleep 1
+done
 
-PID="$(adb shell pidof "$PKG" | tr -d '\r' | awk '{print $1}')"
+# Always save the full logcat since boot was cleared, regardless of outcome,
+# so it can be inspected even when the pidof check above raced the process.
+adb logcat -d > full_logcat.txt
+
 if [ -z "$PID" ]; then
-  echo "App is not running (pidof empty). It may have crashed or detected the emulator."
-  adb logcat -d | tail -n 200
+  echo "App is not running (pidof empty after ${SETTLE_SECONDS}s)."
+  echo "== monkey output:"
+  cat monkey_output.txt
+  echo "== logcat filtered for this package / crash / native-crash markers:"
+  grep -iE "$(echo "$PKG" | sed 's/\./\\./g')|FATAL EXCEPTION|AndroidRuntime|DEBUG *: *\*\*\*|Fatal signal|Process .* has died|libArkStub|ArkVmp" full_logcat.txt || echo "  (no matching lines -- see full_logcat.txt artifact)"
   exit 1
 fi
 echo "== PID: $PID"
+sleep 2  # give it a moment past first sight in case it dies right after
+if ! adb shell pidof "$PKG" >/dev/null 2>&1; then
+  echo "Process $PID appeared then exited almost immediately (likely self-terminated)."
+  adb logcat -d > full_logcat.txt
+  grep -iE "$(echo "$PKG" | sed 's/\./\\./g')|FATAL EXCEPTION|AndroidRuntime|Fatal signal|Process .* has died|libArkStub|ArkVmp" full_logcat.txt || echo "  (no matching lines -- see full_logcat.txt artifact)"
+  exit 1
+fi
 
 echo "== Switching adb to root"
 adb root

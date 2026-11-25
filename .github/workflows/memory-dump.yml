@@ -70,10 +70,22 @@ jobs:
             bash scripts/dump_memory.sh
 
       - name: Extract candidate DEX files from the dumped memory
+        if: success()
         run: |
           python3 scripts/extract_dex_from_dumps.py mem_dumps recovered_dex
 
+      - name: Upload launch diagnostics (always, even if the app never ran)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-diagnostics
+          path: |
+            monkey_output.txt
+            full_logcat.txt
+          if-no-files-found: ignore
+
       - name: Upload raw memory regions (for manual inspection if nothing was found)
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: raw-memory-regions
@@ -83,6 +95,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload recovered DEX files
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: recovered-dex

@@ -162,7 +162,8 @@ public class RemoteUnpackActivity extends Activity {
                 }
                 appendStatus("Run finished: " + state.conclusion);
                 if (!"success".equals(state.conclusion)) {
-                    appendStatus("Workflow did not succeed. Open " + state.htmlUrl + " and check the logs.");
+                    appendStatus("Workflow did not succeed. Pulling launch diagnostics ...");
+                    showLaunchDiagnostics(api, runId, state.htmlUrl);
                     return;
                 }
 
@@ -199,6 +200,98 @@ public class RemoteUnpackActivity extends Activity {
                 ui.post(() -> busy(false));
             }
         });
+    }
+
+    private static final String[] CRASH_MARKERS = {
+            "fatal exception", "androidruntime", "fatal signal", "has died",
+            "libarkstub", "arkvmp", "segv", "signal 11"
+    };
+
+    /** Downloads the 'launch-diagnostics' artifact (if any) and shows the lines most likely to explain a failed launch. */
+    private void showLaunchDiagnostics(GitHubApi api, long runId, String htmlUrl) {
+        try {
+            GitHubApi.Artifact diag = null;
+            for (GitHubApi.Artifact a : api.listArtifacts(runId)) {
+                if ("launch-diagnostics".equals(a.name)) diag = a;
+            }
+            if (diag == null) {
+                appendStatus("No diagnostics artifact was produced. Open " + htmlUrl + " and check the job log directly.");
+                return;
+            }
+            File zip = new File(getCacheDir(), "diag.zip");
+            api.downloadArtifactZip(diag.id, zip);
+            File dir = new File(getCacheDir(), "diag");
+            if (dir.exists()) { File[] old = dir.listFiles(); if (old != null) for (File f : old) f.delete(); }
+            dir.mkdirs();
+            try (java.util.zip.ZipInputStream zin = new java.util.zip.ZipInputStream(new FileInputStream(zip))) {
+                java.util.zip.ZipEntry e;
+                while ((e = zin.getNextEntry()) != null) {
+                    if (e.isDirectory()) continue;
+                    File out = new File(dir, new File(e.getName()).getName());
+                    try (OutputStream o = new FileOutputStream(out)) { Util.copy(zin, o); }
+                }
+            }
+            zip.delete();
+
+            File logcat = new File(dir, "full_logcat.txt");
+            File monkey = new File(dir, "monkey_output.txt");
+            StringBuilder out = new StringBuilder();
+            if (monkey.isFile()) {
+                String m = readSmall(monkey);
+                if (m.toLowerCase().contains("aborted") || m.toLowerCase().contains("no activities")) {
+                    out.append("Launcher problem (from monkey):\n").append(lastLines(m, 10)).append("\n\n");
+                }
+            }
+            if (logcat.isFile()) {
+                String log = readSmall(logcat);
+                String hits = grepMarkers(log, CRASH_MARKERS, 40);
+                out.append(hits.isEmpty()
+                        ? "No crash/FATAL/signal lines found in logcat either -- this points to a silent exit "
+                          + "(e.g. the app detecting the emulator and quietly closing itself) rather than a crash."
+                        : "Matching lines from the device log:\n" + hits);
+            } else {
+                out.append("No full_logcat.txt in the artifact.");
+            }
+            appendStatus(out.toString());
+            appendStatus("\nFull files saved on GitHub as the 'launch-diagnostics' artifact on this run: " + htmlUrl);
+        } catch (Exception e) {
+            appendStatus("Could not fetch diagnostics (" + e.getMessage() + "). Open " + htmlUrl + " directly.");
+        }
+    }
+
+    private static String readSmall(File f) throws Exception {
+        long len = Math.min(f.length(), 2L * 1024 * 1024); // cap at 2MB for in-app display
+        byte[] buf = new byte[(int) len];
+        try (InputStream in = new FileInputStream(f)) {
+            int off = 0, n;
+            while (off < buf.length && (n = in.read(buf, off, buf.length - off)) > 0) off += n;
+        }
+        return new String(buf, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static String lastLines(String text, int n) {
+        String[] lines = text.split("\n");
+        int start = Math.max(0, lines.length - n);
+        StringBuilder b = new StringBuilder();
+        for (int i = start; i < lines.length; i++) b.append(lines[i]).append('\n');
+        return b.toString();
+    }
+
+    private static String grepMarkers(String text, String[] markers, int maxLines) {
+        StringBuilder b = new StringBuilder();
+        int n = 0;
+        for (String line : text.split("\n")) {
+            String low = line.toLowerCase();
+            for (String m : markers) {
+                if (low.contains(m)) {
+                    b.append(line).append('\n');
+                    n++;
+                    break;
+                }
+            }
+            if (n >= maxLines) { b.append("  ... (truncated, see full artifact)\n"); break; }
+        }
+        return b.toString();
     }
 
     private static int unzipDexInto(File zipFile, File outDir) throws Exception {
