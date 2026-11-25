@@ -1,0 +1,90 @@
+name: DeDex Memory Dump (ArkStub / native-protected APKs)
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: 'Release-asset URL of the APK (from upload_apk_release.sh). Leave empty to use an .apk committed in the repo instead.'
+        required: false
+      settle_seconds:
+        description: 'Seconds to wait after launch before dumping memory'
+        default: '10'
+        required: false
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate target APK
+        env:
+          APK_URL: ${{ github.event.inputs.apk_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p apk
+          if [ -n "$APK_URL" ]; then
+            echo "Downloading APK from release asset"
+            curl -sSL -H "Authorization: Bearer $GH_TOKEN" \
+                 -H "Accept: application/octet-stream" \
+                 -o apk/target.apk "$APK_URL"
+            if [ ! -s apk/target.apk ]; then
+              echo "Download failed or produced an empty file. Check apk_url and that the token has access."
+              exit 1
+            fi
+            echo "Downloaded $(du -h apk/target.apk | cut -f1)"
+          else
+            found="$(find . -maxdepth 2 -iname '*.apk' ! -path './apk/*' | head -n 1)"
+            if [ -z "$found" ]; then
+              echo "No apk_url given and no .apk file found in the repo root."
+              exit 1
+            fi
+            cp "$found" apk/target.apk
+            echo "Using $found"
+          fi
+
+      - name: Enable KVM (hardware acceleration for the emulator)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Run emulator and dump memory
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          force-avd-creation: false
+          emulator-options: -no-snapshot-load -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: |
+            export SETTLE_SECONDS="${{ github.event.inputs.settle_seconds }}"
+            bash scripts/dump_memory.sh
+
+      - name: Extract candidate DEX files from the dumped memory
+        run: |
+          python3 scripts/extract_dex_from_dumps.py mem_dumps recovered_dex
+
+      - name: Upload raw memory regions (for manual inspection if nothing was found)
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-memory-regions
+          path: |
+            mem_dumps/
+            full_maps.txt
+          if-no-files-found: warn
+
+      - name: Upload recovered DEX files
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovered-dex
+          path: recovered_dex/
+          if-no-files-found: warn

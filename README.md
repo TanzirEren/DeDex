@@ -35,6 +35,13 @@ unpack isn't possible.
 
 The token is stored with `EncryptedSharedPreferences`, not plain text.
 
+This repo already includes the `memory-dump.yml` workflow and the
+`scripts/` it needs (`dump_memory.sh`, `extract_dex_from_dumps.py`,
+`upload_apk_release.sh`) — nothing extra to add. See
+[MEMORY_DUMP.md](MEMORY_DUMP.md) for how that workflow works and how to
+troubleshoot it directly on GitHub if you ever want to run it without
+going through the app.
+
 ## Build with GitHub Actions
 1. Create a new GitHub repo and upload everything in this folder (keep the `.github` folder).
 2. Push to `main`. Open the **Actions** tab, wait for "Build DeDex".

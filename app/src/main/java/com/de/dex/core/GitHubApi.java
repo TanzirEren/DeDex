@@ -55,7 +55,16 @@ public final class GitHubApi {
     private static void failIfError(HttpURLConnection c, String what) throws IOException {
         int code = c.getResponseCode();
         if (code >= 400) {
-            throw new IOException(what + " failed (HTTP " + code + "): " + trim(body(c)));
+            String hint = "";
+            if (code == 404 && (what.contains("runs") || what.contains("workflow") || what.contains("artifact"))) {
+                hint = " -- 404 here usually means either: the workflow file isn't at "
+                        + "'.github/workflows/<name>' on that exact branch in that repo, or the "
+                        + "PAT is missing the 'Actions: Read and write' permission (GitHub returns "
+                        + "404, not 403, when a token lacks access, to avoid confirming the resource exists).";
+            } else if (code == 404 && what.contains("release")) {
+                hint = " -- check that the PAT has 'Contents: Read and write' on this exact repo.";
+            }
+            throw new IOException(what + " failed (HTTP " + code + "): " + trim(body(c)) + hint);
         }
     }
 
